@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Loader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #282c34;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .container {
+            background-color: #3c4043;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            width: 350px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h2 {
+            margin: 0 0 20px;
+            color: #61dafb;
+        }
+        .game-list {
+            list-style: none;
+            padding: 0;
+            max-height: 300px; /* Set a max height for scrolling */
+            overflow-y: auto;  /* Enable vertical scrolling */
+            margin: 0;
+        }
+        .game-item {
+            margin: 10px 0;
+            cursor: pointer;
+            padding: 10px;
+            border: 1px solid #61dafb;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .game-item:hover {
+            background-color: #61dafb;
+            color: #282c34;
+        }
+        .game-icon {
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
+            vertical-align: middle;
+            border-radius: 5px;
+            border: 1px solid #3c4043;
+        }
+        #gameIframeContainer {
+            width: 80%;
+            height: 60vh;
+            margin-top: 20px;
+            position: relative;
+        }
+        #gameIframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 10px;
+            background-color: #fff;
+        }
+        .fullscreen-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            background-color: #61dafb;
+            color: #282c34;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .fullscreen-btn:hover {
+            background-color: #21a1f1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Game Loader</h2>
+        <ul class="game-list" id="gameList">
+            <!-- Games will be dynamically added here -->
+        </ul>
+    </div>
+    <div id="gameIframeContainer">
+        <iframe id="gameIframe" sandbox="allow-same-origin allow-scripts" src=""></iframe>
+        <button class="fullscreen-btn" id="fullscreenBtn">Fullscreen</button>
+    </div>
+    <script>
+        fetch('game_list.json')
+            .then(response => response.json())
+            .then(games => {
+                const gameList = document.getElementById('gameList');
+                const gameIframe = document.getElementById('gameIframe');
+                const fullscreenBtn = document.getElementById('fullscreenBtn');
+                games.forEach(game => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'game-item';
+
+                    if (game.icon) {
+                        const icon = document.createElement('img');
+                        icon.src = game.icon;
+                        icon.alt = `${game.name} icon`;
+                        icon.className = 'game-icon';
+                        listItem.appendChild(icon);
+                    }
+
+                    const text = document.createTextNode(game.name);
+                    listItem.appendChild(text);
+
+                    listItem.addEventListener('click', () => {
+                        if (game.type === 'python') {
+                            // Load Python game logic (this would typically involve server-side execution)
+                        } else if (game.type === 'html') {
+                            gameIframe.src = game.path;
+                        } else if (game.type === 'web') {
+                            gameIframe.src = game.url;
+                        } else if (game.type === 'nes') {
+                            fetch('/launch_nes', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ path: game.path })
+                            })
+                            .then(response => response.text())
+                            .then(data => console.log(data))
+                            .catch(error => console.error('Error launching NES game:', error));
+                        } else if (game.type === 'xci') {
+                            fetch('/launch_xci', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ path: game.path })
+                            })
+                            .then(response => response.text())
+                            .then(data => console.log(data))
+                            .catch(error => console.error('Error launching XCI game:', error));
+                        } else if (game.type === 'wbfs' || game.type === 'rvz') {
+                            fetch('/launch_wii', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({ path: game.path })
+                            })
+                            .then(response => response.text())
+                            .then(data => console.log(data))
+                            .catch(error => console.error('Error launching Wii game:', error));
+                        }
+                    });
+
+                    gameList.appendChild(listItem);
+                });
+
+                fullscreenBtn.addEventListener('click', () => {
+                    if (gameIframe.requestFullscreen) {
+                        gameIframe.requestFullscreen();
+                    } else if (gameIframe.mozRequestFullScreen) { // Firefox
+                        gameIframe.mozRequestFullScreen();
+                    } else if (gameIframe.webkitRequestFullscreen) { // Chrome, Safari, and Opera
+                        gameIframe.webkitRequestFullscreen();
+                    } else if (gameIframe.msRequestFullscreen) { // IE/Edge
+                        gameIframe.msRequestFullscreen();
+                    }
+                });
+            })
+            .catch(error => console.error('Error fetching game list:', error));
+    </script>
+</body>
+</html>
