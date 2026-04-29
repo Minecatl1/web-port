@@ -1,0 +1,88 @@
+name: Generate Games JSON
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  generate-games-json:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Generate games.json
+        run: |
+          #!/bin/bash
+          
+          # Initialize JSON array
+          echo "[" > games.json
+          first=true
+          
+          # Find all game directories and look for index.html
+          for game_dir in */; do
+            # Skip hidden directories, .github, and node_modules
+            if [[ "$game_dir" == .* ]] || [[ "$game_dir" == ".github/" ]] || [[ "$game_dir" == "node_modules/" ]]; then
+              continue
+            fi
+            
+            game_name="${game_dir%/}"
+            index_file="${game_dir}index.html"
+            
+            # Check if index.html exists
+            if [[ -f "$index_file" ]]; then
+              # Look for icon files in order of preference
+              icon_file=""
+              for icon_name in icon.png icon.jpg icon.gif favicon.png favicon.ico icon.svg app.png logo.png; do
+                if [[ -f "${game_dir}${icon_name}" ]]; then
+                  icon_file="${icon_name}"
+                  break
+                fi
+              done
+              
+              # If no standard icon found, search for any image file
+              if [[ -z "$icon_file" ]]; then
+                icon_file=$(find "$game_dir" -maxdepth 1 \( -name "*.png" -o -name "*.jpg" -o -name "*.gif" -o -name "*.svg" \) | head -1 | xargs basename)
+              fi
+              
+              # Add entry to JSON
+              if [[ "$first" == false ]]; then
+                echo "," >> games.json
+              fi
+              
+              printf '  {\n    "name": "%s",\n    "path": "%s/index.html",\n    "icon": %s\n  }' \
+                "$game_name" \
+                "$game_name" \
+                "$([ -z \"$icon_file\" ] && echo 'null' || printf '"%s/%s"' "$game_name" "$icon_file")" \
+                >> games.json
+              
+              first=false
+            fi
+          done
+          
+          # Close JSON array
+          echo "" >> games.json
+          echo "]" >> games.json
+          
+          echo "Generated games.json with $(grep -o '"name"' games.json | wc -l) games"
+      
+      - name: Check if games.json changed
+        id: git-check
+        run: |
+          if git diff --quiet games.json; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Commit and push changes
+        if: steps.git-check.outputs.changed == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add games.json
+          git commit -m "chore: update games.json with latest game index [skip ci]"
+          git push
