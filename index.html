@@ -99,7 +99,7 @@
         <button class="fullscreen-btn" id="fullscreenBtn">Fullscreen</button>
     </div>
     <script>
-        fetch('game_list.json')
+        fetch('games.json')
             .then(response => response.json())
             .then(games => {
                 const gameList = document.getElementById('gameList');
